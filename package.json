@@ -1,0 +1,42 @@
+{
+  "name": "ramzishare-connect",
+  "version": "1.0.0",
+  "description": "RamziShare connect - A fast, efficient, and user-friendly local file sharing server for WiFi networks. Share files seamlessly across devices on your local network without cloud services.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "file-sharing",
+    "local-network",
+    "wifi",
+    "file-server",
+    "local-server",
+    "network-sharing",
+    "express",
+    "file-upload",
+    "web-server",
+    "p2p-sharing"
+  ],
+  "author": "Nisarga Lokhande",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nikobuddy/Ramzi-Share.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nikobuddy/Ramzi-Share/issues"
+  },
+  "homepage": "https://github.com/nikobuddy/Ramzi-Share#readme",
+  "engines": {
+    "node": ">=14.0.0",
+    "npm": ">=6.0.0"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "cors": "^2.8.5"
+  }
+}
+

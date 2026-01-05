@@ -1,12 +1,40 @@
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const cors = require('cors');
+const crypto = require('crypto');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
 const PORT = 3000;
+
+// Store connected users
+const connectedUsers = new Map();
+
+// Store file passwords (in production, use a database)
+// Format: { filename: hashedPassword }
+const filePasswords = {};
+
+// Helper function to hash password
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(password).digest('hex');
+}
+
+// Helper function to verify password
+function verifyPassword(password, hash) {
+  return hashPassword(password) === hash;
+}
 
 // Enable CORS for local network access
 app.use(cors());
@@ -50,19 +78,14 @@ const upload = multer({
 // Serve static files from public folder
 app.use('/public', express.static(publicDir));
 
-// Serve static files from store folder (for browsing)
-app.use('/store', express.static(storeDir, {
-  setHeaders: (res, filePath) => {
-    // Set appropriate headers for file downloads
-    if (filePath.endsWith('.html') || filePath.endsWith('.htm')) {
-      res.setHeader('Content-Type', 'text/html');
-    }
-  }
-}));
-
-// Serve the main HTML page
+// Serve login page as root
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+// Serve dashboard
+app.get('/dashboard.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
 });
 
 // File upload endpoint
@@ -71,7 +94,32 @@ app.post('/upload', upload.single('file'), (req, res) => {
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
-  const fileUrl = req.body.public === 'true' 
+  const isPublic = req.body.public === 'true';
+  
+  // Validate private files must have password
+  if (!isPublic) {
+    const password = req.body.password ? req.body.password.trim() : '';
+    if (!password || password === '') {
+      // Delete the uploaded file if password is missing
+      const filePath = path.join(storeDir, req.file.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      return res.status(400).json({ error: 'Access code is required for private files' });
+    }
+    if (password.length < 3) {
+      // Delete the uploaded file if password is too short
+      const filePath = path.join(storeDir, req.file.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      return res.status(400).json({ error: 'Access code must be at least 3 characters long' });
+    }
+    // Store password for private files
+    filePasswords[req.file.filename] = hashPassword(password);
+  }
+
+  const fileUrl = isPublic 
     ? `/public/${req.file.filename}`
     : `/store/${req.file.filename}`;
 
@@ -81,7 +129,8 @@ app.post('/upload', upload.single('file'), (req, res) => {
     filename: req.file.filename,
     size: req.file.size,
     url: fileUrl,
-    isPublic: req.body.public === 'true'
+    isPublic: isPublic,
+    hasPassword: !isPublic
   });
 });
 
@@ -101,7 +150,8 @@ app.get('/api/files', (req, res) => {
           size: stats.size,
           modified: stats.mtime,
           url: `/store/${file}`,
-          isPublic: false
+          isPublic: false,
+          hasPassword: filePasswords.hasOwnProperty(file)
         });
       }
     });
@@ -117,7 +167,8 @@ app.get('/api/files', (req, res) => {
           size: stats.size,
           modified: stats.mtime,
           url: `/public/${file}`,
-          isPublic: true
+          isPublic: true,
+          hasPassword: false
         });
       }
     });
@@ -133,7 +184,7 @@ app.get('/api/files', (req, res) => {
 
 // Delete file endpoint
 app.delete('/api/files/:filename', (req, res) => {
-  const filename = req.params.filename;
+  const { filename } = req.params;
   const isPublic = req.query.public === 'true';
   
   const filePath = isPublic 
@@ -143,6 +194,10 @@ app.delete('/api/files/:filename', (req, res) => {
   try {
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
+      // Remove password if exists
+      if (filePasswords.hasOwnProperty(filename)) {
+        delete filePasswords[filename];
+      }
       res.json({ success: true, message: 'File deleted successfully' });
     } else {
       res.status(404).json({ error: 'File not found' });
@@ -150,6 +205,64 @@ app.delete('/api/files/:filename', (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete file' });
   }
+});
+
+// Verify password for private file
+app.post('/api/verify-password', (req, res) => {
+  const { filename, password } = req.body;
+  
+  if (!filename || !password) {
+    return res.status(400).json({ error: 'Filename and password required' });
+  }
+
+  const hashedPassword = filePasswords[filename];
+  if (!hashedPassword) {
+    return res.status(404).json({ error: 'File not found or no password set' });
+  }
+
+  const isValid = verifyPassword(password, hashedPassword);
+  
+  if (isValid) {
+    res.json({ success: true, message: 'Password verified' });
+  } else {
+    res.status(401).json({ error: 'Invalid password' });
+  }
+});
+
+// Protected file download endpoint
+app.get('/store/:filename', (req, res) => {
+  const { filename } = req.params;
+  const { password } = req.query;
+  const filePath = path.join(storeDir, filename);
+
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  // All private files require password
+  const hashedPassword = filePasswords[filename];
+  if (!hashedPassword) {
+    return res.status(401).json({ 
+      error: 'Access code required',
+      requiresPassword: true 
+    });
+  }
+
+  if (!password) {
+    return res.status(401).json({ 
+      error: 'Access code required',
+      requiresPassword: true 
+    });
+  }
+
+  // Verify password
+  if (!verifyPassword(password, hashedPassword)) {
+    return res.status(401).json({ error: 'Invalid access code' });
+  }
+
+  // Send file
+  res.sendFile(filePath);
 });
 
 // Get network IP address
@@ -165,8 +278,119 @@ function getLocalIP() {
   return 'localhost';
 }
 
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // User joins with name
+  socket.on('user-join', (userData) => {
+    connectedUsers.set(socket.id, {
+      id: socket.id,
+      name: userData.name,
+      userId: userData.userId,
+      joinedAt: new Date()
+    });
+
+    // Broadcast user joined
+    io.emit('user-joined', {
+      user: connectedUsers.get(socket.id),
+      totalUsers: connectedUsers.size
+    });
+
+    // Send current users list to new user
+    socket.emit('users-list', Array.from(connectedUsers.values()));
+    
+    // Broadcast updated users list to all
+    io.emit('users-list-updated', Array.from(connectedUsers.values()));
+  });
+
+  // Handle private messages
+  socket.on('private-message', (messageData) => {
+    const sender = connectedUsers.get(socket.id);
+    if (!sender) return;
+
+    // Find recipient by userId
+    const recipient = Array.from(connectedUsers.values()).find(
+      user => user.userId === messageData.toUserId
+    );
+
+    if (recipient) {
+      // Send to recipient
+      io.to(recipient.id).emit('private-message', {
+        fromUserId: sender.userId,
+        fromUserName: sender.name,
+        message: messageData.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Handle users list request
+  socket.on('request-users-list', () => {
+    socket.emit('users-list', Array.from(connectedUsers.values()));
+  });
+
+  socket.on('get-users-list', () => {
+    io.emit('users-list-updated', Array.from(connectedUsers.values()));
+  });
+
+  // Handle chat messages
+  socket.on('chat-message', (messageData) => {
+    const user = connectedUsers.get(socket.id);
+    if (user) {
+      io.emit('chat-message', {
+        id: Date.now().toString(),
+        user: user.name,
+        userId: user.userId,
+        message: messageData.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Handle file share notification
+  socket.on('file-shared', (fileData) => {
+    const user = connectedUsers.get(socket.id);
+    if (user) {
+      io.emit('file-shared', {
+        user: user.name,
+        fileName: fileData.fileName,
+        fileSize: fileData.fileSize,
+        isPublic: fileData.isPublic,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
+  // Handle typing indicator
+  socket.on('typing', (data) => {
+    const user = connectedUsers.get(socket.id);
+    if (user) {
+      socket.broadcast.emit('typing', {
+        user: user.name,
+        isTyping: data.isTyping
+      });
+    }
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', () => {
+    const user = connectedUsers.get(socket.id);
+    if (user) {
+      connectedUsers.delete(socket.id);
+      io.emit('user-left', {
+        user: user,
+        totalUsers: connectedUsers.size
+      });
+      // Broadcast updated users list
+      io.emit('users-list-updated', Array.from(connectedUsers.values()));
+    }
+    console.log('User disconnected:', socket.id);
+  });
+});
+
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   const localIP = getLocalIP();
   console.log('\n========================================');
   console.log('🚀 RamziShare connect Running!');
@@ -176,6 +400,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('========================================\n');
   console.log('💡 Share the network URL with devices on your WiFi');
   console.log('📁 Files stored in: ./store');
-  console.log('🌍 Public files in: ./store/public\n');
+  console.log('🌍 Public files in: ./store/public');
+  console.log('💬 Real-time chat enabled\n');
 });
 

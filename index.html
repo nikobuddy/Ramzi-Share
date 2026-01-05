@@ -183,29 +183,76 @@
         }
 
         /* Checkbox */
-        .checkbox-group {
+        /* File Type Selection */
+        .file-type-selection {
             margin: var(--spacing-lg) 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--spacing-sm);
-            padding: var(--spacing-md);
+            padding: var(--spacing-lg);
             background: var(--background);
             border-radius: var(--radius-md);
+            border: 1px solid var(--border);
         }
 
-        .checkbox-group input[type="checkbox"] {
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            padding: var(--spacing-md);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--surface);
+        }
+
+        .radio-option:hover {
+            border-color: var(--primary);
+            background: var(--surface-hover);
+        }
+
+        .radio-option input[type="radio"] {
+            margin-right: var(--spacing-md);
             width: 1.25rem;
             height: 1.25rem;
             cursor: pointer;
             accent-color: var(--primary);
         }
 
-        .checkbox-group label {
-            cursor: pointer;
+        .radio-option input[type="radio"]:checked + .radio-content {
+            color: var(--primary);
+        }
+
+        .radio-option:has(input[type="radio"]:checked) {
+            border-color: var(--primary);
+            background: #e0f2fe;
+        }
+
+        .radio-content {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+            flex: 1;
+        }
+
+        .radio-icon {
+            font-size: 1.5rem;
+        }
+
+        .radio-content strong {
+            display: block;
+            font-size: 1rem;
             color: var(--text-primary);
-            font-weight: 500;
-            user-select: none;
+            margin-bottom: 0.25rem;
+        }
+
+        .radio-content p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin: 0;
         }
 
         /* Buttons */
@@ -459,6 +506,24 @@
             .file-details h3 {
                 white-space: normal;
             }
+
+            .radio-group {
+                gap: var(--spacing-xs);
+            }
+
+            .radio-option {
+                padding: var(--spacing-sm);
+            }
+
+            .radio-content {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--spacing-xs);
+            }
+
+            .radio-icon {
+                font-size: 1.25rem;
+            }
         }
 
         /* Utility Classes */
@@ -472,6 +537,154 @@
 
         .mb-sm {
             margin-bottom: var(--spacing-sm);
+        }
+
+        /* Password Input Group */
+        .password-input-group {
+            margin: var(--spacing-md) 0;
+            padding: var(--spacing-lg);
+            background: #fef3c7;
+            border-radius: var(--radius-md);
+            border: 2px solid #fbbf24;
+            animation: slideDown 0.3s ease;
+        }
+
+        .password-input-group input:invalid {
+            border-color: var(--danger);
+        }
+
+        .password-input-group input:valid {
+            border-color: var(--success);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .password-input-group label {
+            display: block;
+            margin-bottom: var(--spacing-sm);
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.9375rem;
+        }
+
+        .password-input-group input[type="text"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            margin-bottom: var(--spacing-xs);
+            transition: border-color 0.2s;
+            background: var(--surface);
+        }
+
+        .password-input-group input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .password-input-group small {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            display: block;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background-color: var(--surface);
+            margin: 15% auto;
+            padding: var(--spacing-xl);
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 400px;
+            box-shadow: var(--shadow-xl);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .modal-header h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .modal-header p {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+        }
+
+        .modal-body {
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .modal-body input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .modal-body input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: var(--spacing-sm);
+            justify-content: flex-end;
+        }
+
+        .close {
+            color: var(--text-muted);
+            float: right;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: var(--text-primary);
         }
     </style>
 </head>
@@ -492,9 +705,37 @@
                     </div>
                     <input type="file" id="fileInput" class="file-input" multiple>
                 </div>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="publicCheckbox">
-                    <label for="publicCheckbox">Make file publicly accessible via direct URL</label>
+                
+                <div class="file-type-selection">
+                    <h4 style="margin-bottom: var(--spacing-md); color: var(--text-primary); font-size: 1rem;">File Access Type:</h4>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="fileType" id="publicRadio" value="public" checked>
+                            <div class="radio-content">
+                                <span class="radio-icon">🌍</span>
+                                <div>
+                                    <strong>Public File</strong>
+                                    <p>Anyone with the link can download</p>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="fileType" id="privateRadio" value="private">
+                            <div class="radio-content">
+                                <span class="radio-icon">🔒</span>
+                                <div>
+                                    <strong>Private File</strong>
+                                    <p>Requires access code - Only accessible with code</p>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="password-input-group" id="passwordInputGroup" style="display: none;">
+                    <label for="filePassword">🔐 Access Code <span style="color: var(--danger);">*</span> (Required):</label>
+                    <input type="text" id="filePassword" placeholder="Enter access code (required for private files)" maxlength="50" required>
+                    <small>Private files require an access code. Users will need this code to download the file.</small>
                 </div>
                 <div class="progress-bar" id="progressBar">
                     <div class="progress-fill" id="progressFill"></div>
@@ -519,14 +760,55 @@
         </div>
     </div>
 
+    <!-- Password Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closePasswordModal()">&times;</span>
+            <div class="modal-header">
+                <h3>🔒 Password Required</h3>
+                <p id="modalFileName"></p>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="accessPassword" placeholder="Enter access code" autocomplete="off">
+                <div class="message" id="modalMessage" style="margin-top: 1rem;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePasswordModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="verifyAndDownload()">Access File</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
-        const publicCheckbox = document.getElementById('publicCheckbox');
+        const publicRadio = document.getElementById('publicRadio');
+        const privateRadio = document.getElementById('privateRadio');
+        const passwordInputGroup = document.getElementById('passwordInputGroup');
+        const filePassword = document.getElementById('filePassword');
         const progressBar = document.getElementById('progressBar');
         const progressFill = document.getElementById('progressFill');
         const message = document.getElementById('message');
         const fileList = document.getElementById('fileList');
+        const passwordModal = document.getElementById('passwordModal');
+        const accessPassword = document.getElementById('accessPassword');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalFileName = document.getElementById('modalFileName');
+        
+        let currentFileToDownload = null;
+
+        // Show/hide password input based on file type selection
+        function updatePasswordField() {
+            if (privateRadio.checked) {
+                passwordInputGroup.style.display = 'block';
+            } else {
+                passwordInputGroup.style.display = 'none';
+                filePassword.value = '';
+            }
+        }
+
+        publicRadio.addEventListener('change', updatePasswordField);
+        privateRadio.addEventListener('change', updatePasswordField);
 
         // Click to upload
         uploadArea.addEventListener('click', () => {
@@ -567,9 +849,30 @@
         }
 
         async function uploadFile(file) {
+            // Validate private file has password
+            const isPublic = publicRadio.checked;
+            if (!isPublic) {
+                const password = filePassword.value.trim();
+                if (!password || password === '') {
+                    showMessage('Access code is required for private files. Please enter an access code.', 'error');
+                    filePassword.focus();
+                    return;
+                }
+                if (password.length < 3) {
+                    showMessage('Access code must be at least 3 characters long.', 'error');
+                    filePassword.focus();
+                    return;
+                }
+            }
+
             const formData = new FormData();
             formData.append('file', file);
-            formData.append('public', publicCheckbox.checked ? 'true' : 'false');
+            formData.append('public', isPublic ? 'true' : 'false');
+            
+            // Add password for private files (required)
+            if (!isPublic) {
+                formData.append('password', filePassword.value.trim());
+            }
 
             progressBar.style.display = 'block';
             progressFill.style.width = '0%';
@@ -588,11 +891,17 @@
                 xhr.addEventListener('load', () => {
                     if (xhr.status === 200) {
                         const response = JSON.parse(xhr.responseText);
-                        showMessage(`File "${response.filename}" uploaded successfully!`, 'success');
+                        let msg = `File "${response.filename}" uploaded successfully!`;
+                        if (!response.isPublic) {
+                            msg += ' (Private - Access code protected)';
+                        }
+                        showMessage(msg, 'success');
                         progressBar.style.display = 'none';
+                        filePassword.value = ''; // Clear password field
                         loadFiles();
                     } else {
-                        throw new Error('Upload failed');
+                        const response = JSON.parse(xhr.responseText || '{}');
+                        throw new Error(response.error || 'Upload failed');
                     }
                 });
 
@@ -645,6 +954,7 @@
                                 <span>${formatFileSize(file.size)}</span>
                                 <span>•</span>
                                 <span>${formatDate(file.modified)}</span>
+                                ${!file.isPublic ? '<span>• 🔐 Access Code Required</span>' : ''}
                             </p>
                         </div>
                     </div>
@@ -652,12 +962,96 @@
                         <span class="badge ${file.isPublic ? 'badge-public' : 'badge-private'}">
                             ${file.isPublic ? '🌍 Public' : '🔒 Private'}
                         </span>
-                        <a href="${file.url}" target="_blank" class="btn btn-primary" download>Download</a>
+                        <button class="btn btn-primary" onclick="downloadFile('${escapeHtml(file.name)}', ${file.isPublic}, true)">Download</button>
                         <button class="btn btn-secondary" onclick="deleteFile('${escapeHtml(file.name)}', ${file.isPublic})">Delete</button>
                     </div>
                 </div>
             `).join('');
         }
+
+        // Download file (with password check if needed)
+        function downloadFile(filename, isPublic, hasPassword) {
+            if (isPublic) {
+                // Public file - direct download
+                window.open(`/public/${encodeURIComponent(filename)}`, '_blank');
+            } else {
+                // Private file - always requires password
+                currentFileToDownload = { filename, isPublic };
+                modalFileName.textContent = filename;
+                accessPassword.value = '';
+                modalMessage.style.display = 'none';
+                passwordModal.style.display = 'block';
+                accessPassword.focus();
+            }
+        }
+
+        // Close password modal
+        function closePasswordModal() {
+            passwordModal.style.display = 'none';
+            currentFileToDownload = null;
+            accessPassword.value = '';
+            modalMessage.style.display = 'none';
+        }
+
+        // Verify password and download
+        async function verifyAndDownload() {
+            if (!currentFileToDownload) return;
+
+            const password = accessPassword.value.trim();
+            if (!password) {
+                showModalMessage('Please enter the access code', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/verify-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filename: currentFileToDownload.filename,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Password verified - download file
+                    const url = `/store/${encodeURIComponent(currentFileToDownload.filename)}?password=${encodeURIComponent(password)}`;
+                    window.open(url, '_blank');
+                    closePasswordModal();
+                } else {
+                    showModalMessage(data.error || 'Invalid access code', 'error');
+                    accessPassword.value = '';
+                    accessPassword.focus();
+                }
+            } catch (error) {
+                showModalMessage('Error verifying password: ' + error.message, 'error');
+            }
+        }
+
+        // Show message in modal
+        function showModalMessage(text, type) {
+            modalMessage.textContent = text;
+            modalMessage.className = `message ${type}`;
+            modalMessage.style.display = 'block';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target === passwordModal) {
+                closePasswordModal();
+            }
+        }
+
+        // Handle Enter key in password input
+        accessPassword.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                verifyAndDownload();
+            }
+        });
 
         // Delete file
         async function deleteFile(filename, isPublic) {

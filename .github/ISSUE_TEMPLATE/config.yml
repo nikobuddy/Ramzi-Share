@@ -1,0 +1,9 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussion / Questions
+    url: https://github.com/nikobuddy/Ramzi-Share/discussions
+    about: Ask questions or discuss ideas
+  - name: 📚 Documentation
+    url: https://github.com/nikobuddy/Ramzi-Share#readme
+    about: Check the README for documentation
+

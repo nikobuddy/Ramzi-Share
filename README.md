@@ -3,13 +3,22 @@
 <div align="center">
 
 ![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)
+![React](https://img.shields.io/badge/React-18-blue.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38bdf8.svg)
 ![Express](https://img.shields.io/badge/Express-4.18-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Platform](https://img.shields.io/badge/Platform-Cross--Platform-lightgrey.svg)
 
 **A fast, efficient, and user-friendly local file sharing server for WiFi networks**
 
-[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [API Documentation](#-api-documentation) • [Contributing](#-contributing)
+[![GitHub stars](https://img.shields.io/github/stars/nikobuddy/Ramzi-Share.svg?style=social&label=Star)](https://github.com/nikobuddy/Ramzi-Share)
+[![GitHub forks](https://img.shields.io/github/forks/nikobuddy/Ramzi-Share.svg?style=social&label=Fork)](https://github.com/nikobuddy/Ramzi-Share/fork)
+[![GitHub watchers](https://img.shields.io/github/watchers/nikobuddy/Ramzi-Share.svg?style=social&label=Watch)](https://github.com/nikobuddy/Ramzi-Share)
+
+[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Contributing](#-contributing) • [License](#-license)
+
+[Report Bug](https://github.com/nikobuddy/Ramzi-Share/issues) • [Request Feature](https://github.com/nikobuddy/Ramzi-Share/issues)
 
 </div>
 
@@ -52,19 +61,27 @@
 
 ### Core Features
 
-- 🌐 **Web-Based Interface** - Modern, responsive UI accessible from any device with a browser
+- 🌐 **Modern Web Interface** - Built with React, TypeScript, and Tailwind CSS
+- 💬 **Real-Time Chat** - Public chat room for all connected users
+- 🔐 **Private Messaging** - One-on-one private chat between users
+- 👥 **User Management** - See who's online and connect with them
 - 📤 **Drag & Drop Upload** - Intuitive file upload with drag-and-drop support
 - 📁 **Dual Storage System** - Separate storage for private and public files
 - 🌍 **Public File Sharing** - Direct URL access for files marked as public
+- 🔒 **Private File Sharing** - Password-protected private files with access codes
 - ⚡ **High Performance** - Optimized for fast file transfers with progress tracking
-- 📱 **Multi-Device Support** - Works seamlessly on desktop, tablet, and mobile devices
-- 🔄 **Auto-Refresh** - File list automatically updates every 30 seconds
+- 📱 **Multi-Device Support** - Fully responsive design works on desktop, tablet, and mobile
+- 🔄 **Real-Time Updates** - Live file sharing notifications and user presence
 - 🗑️ **File Management** - View, download, and delete files through the web interface
 - 📊 **File Information** - Display file size, upload date, and access status
-- 🔒 **Access Control** - Choose between private and public file storage
 
 ### Technical Features
 
+- **Frontend**: React 18 + TypeScript + Tailwind CSS
+- **Backend**: Node.js + Express
+- **Real-Time**: Socket.io for chat and notifications
+- **Type Safety**: Full TypeScript implementation
+- **Styling**: Tailwind CSS utility-first approach
 - RESTful API for programmatic access
 - Real-time upload progress tracking
 - Error handling and user feedback
@@ -158,18 +175,39 @@ You should see all dependencies listed without any errors.
 
 ## ⚡ Quick Start
 
-### Starting the Server
+### Development Mode (Recommended)
 
-1. **Start the server**:
-   ```bash
-   npm start
-   ```
+For development with hot-reload and TypeScript support:
 
-2. **Access the web interface**:
-   - On your computer: Open `http://localhost:3000` in your browser
-   - On other devices: Use the network IP shown in the console (e.g., `http://191.160.2.200:3000`)
+```bash
+# Terminal 1 - Start React dev server (Vite)
+npm run dev:client
 
-3. **Share the network URL** with devices on your WiFi network
+# Terminal 2 - Start backend server
+npm run dev:server
+```
+
+Then open `http://localhost:5173` in your browser.
+
+### Production Mode
+
+For production deployment:
+
+```bash
+# Build React app
+npm run build
+
+# Start production server
+npm start
+```
+
+Then open `http://localhost:3000` in your browser.
+
+### Accessing from Other Devices
+
+- On your computer: Open `http://localhost:3000` (or `http://localhost:5173` in dev mode)
+- On other devices: Use the network IP shown in the console (e.g., `http://192.168.1.100:3000`)
+- Share the network URL with devices on your WiFi network
 
 ### Example Output
 
@@ -511,24 +549,32 @@ Error: listen EADDRINUSE: address already in use :::3000
 
 ## 🤝 Contributing
 
-Contributions are welcome! If you'd like to contribute to this project:
+Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Commit your changes**: `git commit -m 'Add amazing feature'`
-4. **Push to the branch**: `git push origin feature/amazing-feature`
-5. **Open a Pull Request**
+If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
+Don't forget to give the project a star! Thanks again!
 
-### Contribution Ideas
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-- Add user authentication
-- Implement file preview
-- Add file search functionality
-- Support for file folders/directories
-- Add download statistics
-- Implement file expiration
-- Add dark mode to UI
-- Support for multiple file selection improvements
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
+
+### Contributors
+
+Thank you to all contributors who have helped improve RamziShare connect!
+
+<!-- Contributors will be added here -->
+
+We welcome contributions of all kinds! Whether it's:
+- 🐛 Bug fixes
+- ✨ New features
+- 📝 Documentation improvements
+- 🎨 UI/UX enhancements
+- 🧪 Tests
+- 🔧 Code refactoring
 
 ---
 
@@ -541,6 +587,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - Built with [Express.js](https://expressjs.com/)
+- Frontend powered by [React](https://react.dev/) and [TypeScript](https://www.typescriptlang.org/)
+- Styled with [Tailwind CSS](https://tailwindcss.com/)
+- Real-time features with [Socket.io](https://socket.io/)
 - File upload handling with [Multer](https://github.com/expressjs/multer)
 - Inspired by the need for simple, local file sharing solutions
 
@@ -560,8 +609,9 @@ If you encounter any issues or have questions:
 
 **Nisarga Lokhande**
 
-- GitHub: [@nikobuddy](https://github.com/nikobuddy)
-- LinkedIn: [Nisarga Lokhande](https://www.linkedin.com/in/nslokhande/)
+- 🌐 GitHub: [@nikobuddy](https://github.com/nikobuddy)
+- 💼 LinkedIn: [Nisarga Lokhande](https://www.linkedin.com/in/nslokhande/)
+- 📧 Contact: [Open an issue](https://github.com/nikobuddy/Ramzi-Share/issues) or reach out through GitHub
 
 ---
 
@@ -569,7 +619,9 @@ If you encounter any issues or have questions:
 
 **Made with ❤️ by [Nisarga Lokhande](https://github.com/nikobuddy)**
 
-⭐ Star this repo if you find it useful!
+⭐ **Star this repo if you find it useful!**
+
+🔗 **Repository**: [https://github.com/nikobuddy/Ramzi-Share](https://github.com/nikobuddy/Ramzi-Share)
 
 [![GitHub](https://img.shields.io/badge/GitHub-nikobuddy-181717?style=flat&logo=github)](https://github.com/nikobuddy)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Nisarga%20Lokhande-0077B5?style=flat&logo=linkedin)](https://www.linkedin.com/in/nslokhande/)

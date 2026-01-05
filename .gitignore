@@ -6,4 +6,5 @@ store/*
 *.log
 .env
 .env.local
-
+dist/
+.vite/

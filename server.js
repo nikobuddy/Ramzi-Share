@@ -78,15 +78,31 @@ const upload = multer({
 // Serve static files from public folder
 app.use('/public', express.static(publicDir));
 
-// Serve login page as root
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'login.html'));
-});
-
-// Serve dashboard
-app.get('/dashboard.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard.html'));
-});
+// Serve React build in production
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction && fs.existsSync(path.join(__dirname, 'dist'))) {
+  app.use(express.static(path.join(__dirname, 'dist')));
+  // API routes should be before the catch-all
+  // All API routes are defined above, so this catch-all only handles React routes
+  app.get('*', (req, res) => {
+    // Don't serve React for API routes
+    if (req.path.startsWith('/api') || req.path.startsWith('/upload') || 
+        req.path.startsWith('/public') || req.path.startsWith('/store') ||
+        req.path.startsWith('/socket.io')) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  });
+} else {
+  // In development, serve old HTML files as fallback if React dev server not running
+  app.get('/', (req, res) => {
+    // Check if React dev server is running (port 5173)
+    res.sendFile(path.join(__dirname, 'login.html'));
+  });
+  app.get('/dashboard.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'dashboard.html'));
+  });
+}
 
 // File upload endpoint
 app.post('/upload', upload.single('file'), (req, res) => {

@@ -1,13 +1,15 @@
-import React, { useState, useEffect, DragEvent, ChangeEvent, KeyboardEvent, FormEvent } from 'react';
-import { Socket } from 'socket.io-client';
-import { FileSharingProps, FileInfo } from '../types';
+import React, { ChangeEvent, DragEvent, KeyboardEvent, useEffect, useState, type ReactElement } from 'react';
+import { FileInfo, FileSharingProps } from '../types';
 
-function FileSharing({ socket, userName }: FileSharingProps): JSX.Element {
+function FileSharing({ socket, userName }: FileSharingProps): ReactElement {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isPublic, setIsPublic] = useState<boolean>(true);
   const [password, setPassword] = useState<string>('');
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [currentUploadFile, setCurrentUploadFile] = useState<{ name: string; size: number } | null>(null);
+  const [uploadedBytes, setUploadedBytes] = useState<number>(0);
+  const [totalBytes, setTotalBytes] = useState<number>(0);
   const [message, setMessage] = useState<{ text: string; type: string }>({ text: '', type: '' });
   const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
   const [accessCode, setAccessCode] = useState<string>('');
@@ -42,7 +44,27 @@ function FileSharing({ socket, userName }: FileSharingProps): JSX.Element {
   const handleFileSelect = (e: ChangeEvent<HTMLInputElement>): void => {
     const selectedFiles = e.target.files;
     if (selectedFiles && selectedFiles.length > 0) {
-      uploadFiles(Array.from(selectedFiles));
+      const filesArray: File[] = Array.from(selectedFiles);
+      // Validate all files before uploading
+      const maxSize = 1024 * 1024 * 1024; // 1GB
+      const invalidFiles = filesArray.filter((file: File) => file.size > maxSize);
+      
+      if (invalidFiles.length > 0) {
+        const fileNames = invalidFiles.map((f: File) => f.name).join(', ');
+        const fileSizeGB = (invalidFiles[0].size / (1024 * 1024 * 1024)).toFixed(2);
+        setMessage({ 
+          text: `Some files exceed 1GB limit (${fileNames} - ${fileSizeGB}GB). Maximum size is 1GB per file.`, 
+          type: 'error' 
+        });
+        setTimeout(() => setMessage({ text: '', type: '' }), 8000);
+        // Upload only valid files
+        const validFiles = filesArray.filter((file: File) => file.size <= maxSize);
+        if (validFiles.length > 0) {
+          uploadFiles(validFiles);
+        }
+      } else {
+        uploadFiles(filesArray);
+      }
     }
   };
 
@@ -50,7 +72,27 @@ function FileSharing({ socket, userName }: FileSharingProps): JSX.Element {
     e.preventDefault();
     const droppedFiles = e.dataTransfer.files;
     if (droppedFiles.length > 0) {
-      uploadFiles(Array.from(droppedFiles));
+      const filesArray: File[] = Array.from(droppedFiles);
+      // Validate all files before uploading
+      const maxSize = 1024 * 1024 * 1024; // 1GB
+      const invalidFiles = filesArray.filter((file: File) => file.size > maxSize);
+      
+      if (invalidFiles.length > 0) {
+        const fileNames = invalidFiles.map((f: File) => f.name).join(', ');
+        const fileSizeGB = (invalidFiles[0].size / (1024 * 1024 * 1024)).toFixed(2);
+        setMessage({ 
+          text: `Some files exceed 1GB limit (${fileNames} - ${fileSizeGB}GB). Maximum size is 1GB per file.`, 
+          type: 'error' 
+        });
+        setTimeout(() => setMessage({ text: '', type: '' }), 8000);
+        // Upload only valid files
+        const validFiles = filesArray.filter((file: File) => file.size <= maxSize);
+        if (validFiles.length > 0) {
+          uploadFiles(validFiles);
+        }
+      } else {
+        uploadFiles(filesArray);
+      }
     }
   };
 
@@ -61,6 +103,18 @@ function FileSharing({ socket, userName }: FileSharingProps): JSX.Element {
   };
 
   const uploadFile = async (file: File): Promise<void> => {
+    // Validate file size (1GB = 1024 * 1024 * 1024 bytes)
+    const maxSize = 1024 * 1024 * 1024; // 1GB
+    if (file.size > maxSize) {
+      const fileSizeGB = (file.size / (1024 * 1024 * 1024)).toFixed(2);
+      setMessage({ 
+        text: `File size (${fileSizeGB}GB) exceeds the 1GB limit. Please choose a smaller file.`, 
+        type: 'error' 
+      });
+      setTimeout(() => setMessage({ text: '', type: '' }), 8000);
+      return;
+    }
+
     if (!isPublic && !password.trim()) {
       setMessage({ text: 'Access code is required for private files', type: 'error' });
       setTimeout(() => setMessage({ text: '', type: '' }), 5000);
@@ -74,15 +128,22 @@ function FileSharing({ socket, userName }: FileSharingProps): JSX.Element {
       formData.append('password', password.trim());
     }
 
+    // Set current upload file info
+    setCurrentUploadFile({ name: file.name, size: file.size });
     setUploading(true);
     setUploadProgress(0);
+    setUploadedBytes(0);
+    setTotalBytes(file.size);
 
     try {
       const xhr = new XMLHttpRequest();
 
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
-          setUploadProgress((e.loaded / e.total) * 100);
+          const progress = (e.loaded / e.total) * 100;
+          setUploadProgress(progress);
+          setUploadedBytes(e.loaded);
+          setTotalBytes(e.total);
         }
       });
 
@@ -95,6 +156,9 @@ function FileSharing({ socket, userName }: FileSharingProps): JSX.Element {
           });
           setPassword('');
           setUploadProgress(0);
+          setCurrentUploadFile(null);
+          setUploadedBytes(0);
+          setTotalBytes(0);
           if (socket) {
             socket.emit('file-shared', {
               fileName: response.filename,
@@ -105,28 +169,64 @@ function FileSharing({ socket, userName }: FileSharingProps): JSX.Element {
           loadFiles();
           setTimeout(() => setMessage({ text: '', type: '' }), 5000);
         } else {
-          const response = JSON.parse(xhr.responseText || '{}');
+          let errorMessage = 'Upload failed';
+          try {
+            const response = JSON.parse(xhr.responseText || '{}');
+            errorMessage = response.error || errorMessage;
+          } catch (e) {
+            // If response is not JSON, use default message
+            errorMessage = `Upload failed with status ${xhr.status}`;
+          }
           setMessage({
-            text: response.error || 'Upload failed',
+            text: errorMessage,
             type: 'error',
           });
-          setTimeout(() => setMessage({ text: '', type: '' }), 5000);
+          setTimeout(() => setMessage({ text: '', type: '' }), 8000);
         }
         setUploading(false);
+        setCurrentUploadFile(null);
+        setUploadedBytes(0);
+        setTotalBytes(0);
       });
 
       xhr.addEventListener('error', () => {
-        setMessage({ text: 'Upload failed', type: 'error' });
+        setMessage({ text: 'Upload failed. Please check your connection and try again.', type: 'error' });
         setUploading(false);
+        setCurrentUploadFile(null);
+        setUploadedBytes(0);
+        setTotalBytes(0);
         setTimeout(() => setMessage({ text: '', type: '' }), 5000);
       });
 
+      xhr.addEventListener('timeout', () => {
+        setMessage({ text: 'Upload timeout. Large files may take longer. Please try again.', type: 'error' });
+        setUploading(false);
+        setCurrentUploadFile(null);
+        setUploadedBytes(0);
+        setTotalBytes(0);
+        setTimeout(() => setMessage({ text: '', type: '' }), 5000);
+      });
+
+      xhr.addEventListener('abort', () => {
+        setMessage({ text: 'Upload cancelled', type: 'error' });
+        setUploading(false);
+        setCurrentUploadFile(null);
+        setUploadedBytes(0);
+        setTotalBytes(0);
+        setTimeout(() => setMessage({ text: '', type: '' }), 5000);
+      });
+
+      // Set timeout to 30 minutes for very large files (ZIP files, etc.)
+      xhr.timeout = 30 * 60 * 1000; // 30 minutes
       xhr.open('POST', '/upload');
       xhr.send(formData);
     } catch (error) {
       const err = error as Error;
       setMessage({ text: 'Error uploading file: ' + err.message, type: 'error' });
       setUploading(false);
+      setCurrentUploadFile(null);
+      setUploadedBytes(0);
+      setTotalBytes(0);
       setTimeout(() => setMessage({ text: '', type: '' }), 5000);
     }
   };
@@ -224,20 +324,54 @@ function FileSharing({ socket, userName }: FileSharingProps): JSX.Element {
         >
           <div className="text-5xl mb-4">📤</div>
           <h3 className="text-lg font-semibold mb-2">Drag & Drop Files Here</h3>
-          <p className="text-slate-600">or click to browse</p>
-          <input
-            type="file"
-            id="fileInput"
-            className="hidden"
-            multiple
-            onChange={handleFileSelect}
-          />
-          {uploading && (
-            <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-4">
-              <div
-                className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
+          <p className="text-slate-600 mb-2">or click to browse</p>
+          <p className="text-xs text-slate-500">
+            Supports all file types (ZIP, images, documents, videos, etc.) • Maximum size: 1GB per file
+          </p>
+            <input
+              type="file"
+              id="fileInput"
+              className="hidden"
+              multiple
+              accept="*/*"
+              onChange={handleFileSelect}
+            />
+          {uploading && currentUploadFile && (
+            <div className="w-full mt-4 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-blue-600 truncate">
+                    📤 Uploading: {currentUploadFile.name}
+                  </p>
+                  <p className="text-xs text-slate-600">
+                    {formatFileSize(uploadedBytes)} / {formatFileSize(totalBytes)}
+                  </p>
+                </div>
+                <div className="ml-4 flex-shrink-0">
+                  <span className="text-xl font-bold text-blue-600">
+                    {Math.round(uploadProgress)}%
+                  </span>
+                </div>
+              </div>
+              <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden relative">
+                <div
+                  className="h-full bg-gradient-to-r from-blue-500 via-blue-400 to-blue-300 rounded-full transition-all duration-300 ease-out flex items-center justify-end pr-2"
+                  style={{ width: `${uploadProgress}%` }}
+                >
+                  {uploadProgress > 15 && (
+                    <span className="text-xs font-semibold text-white">
+                      {Math.round(uploadProgress)}%
+                    </span>
+                  )}
+                </div>
+                {uploadProgress <= 15 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs font-semibold text-slate-700">
+                      {Math.round(uploadProgress)}%
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -262,9 +396,9 @@ function FileSharing({ socket, userName }: FileSharingProps): JSX.Element {
             </label>
             <label
               className={`flex-1 p-3 border-2 rounded-lg cursor-pointer transition-all text-center flex items-center justify-center gap-2 ${
-                !isPublic
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-slate-200 hover:border-slate-300'
+                isPublic
+                  ? 'border-slate-200 hover:border-slate-300'
+                  : 'border-blue-500 bg-blue-50'
               }`}
             >
               <input

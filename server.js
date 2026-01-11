@@ -39,9 +39,9 @@ function verifyPassword(password, hash) {
 // Enable CORS for local network access
 app.use(cors());
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Middleware - Increase limits for large file uploads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Create directories if they don't exist
 const storeDir = path.join(__dirname, 'store');
@@ -54,16 +54,15 @@ const publicDir = path.join(__dirname, 'store', 'public');
 });
 
 // Configure multer for file uploads
+// Note: Multer's destination callback doesn't have access to req.body fields yet
+// So we save to storeDir first, then move to publicDir if needed after upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    // Check if file should go to public folder
-    const isPublic = req.body.public === 'true';
-    const uploadPath = isPublic ? publicDir : storeDir;
-    cb(null, uploadPath);
+    // Always save to storeDir initially - we'll move it later if public
+    cb(null, storeDir);
   },
   filename: (req, file, cb) => {
-    // Preserve original filename with timestamp to avoid conflicts
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    // Preserve original filename
     cb(null, file.originalname);
   }
 });
@@ -71,7 +70,12 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 500 * 1024 * 1024 // 500MB limit
+    fileSize: 1024 * 1024 * 1024 // 1GB limit (1024 MB)
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept all file types including ZIP files, images, documents, videos, etc.
+    // No restrictions on file extensions - users can share any file type
+    cb(null, true);
   }
 });
 
@@ -84,13 +88,14 @@ if (isProduction && fs.existsSync(path.join(__dirname, 'dist'))) {
   app.use(express.static(path.join(__dirname, 'dist')));
   // API routes should be before the catch-all
   // All API routes are defined above, so this catch-all only handles React routes
+  // Note: Static middleware for /public and /store routes are defined above, so they will be handled first
   app.get('*', (req, res) => {
-    // Don't serve React for API routes
+    // Don't serve React for API routes or file routes (these are handled by other middleware)
     if (req.path.startsWith('/api') || req.path.startsWith('/upload') || 
-        req.path.startsWith('/public') || req.path.startsWith('/store') ||
-        req.path.startsWith('/socket.io')) {
+        req.path.startsWith('/store') || req.path.startsWith('/socket.io')) {
       return res.status(404).json({ error: 'Not found' });
     }
+    // /public routes are handled by static middleware above, so they won't reach here
     res.sendFile(path.join(__dirname, 'dist', 'index.html'));
   });
 } else {
@@ -104,36 +109,110 @@ if (isProduction && fs.existsSync(path.join(__dirname, 'dist'))) {
   });
 }
 
-// File upload endpoint
-app.post('/upload', upload.single('file'), (req, res) => {
+// Error handler for multer file size limit
+const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ 
+        error: 'File size exceeds the 1GB limit. Maximum allowed size is 1GB per file.' 
+      });
+    }
+    return res.status(400).json({ error: `Upload error: ${err.message}` });
+  }
+  next(err);
+};
+
+// File upload endpoint - Handle large files including ZIP files (up to 1GB)
+app.post('/upload', upload.single('file'), handleMulterError, (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
-  const isPublic = req.body.public === 'true';
+  // File is initially saved to storeDir (see multer config above)
+  // Use req.file.path which contains the actual path where multer saved it
+  const tempFilePath = req.file.path;
   
+  // Debug: Log the request body to see what we're receiving
+  console.log('Upload request body:', JSON.stringify(req.body));
+  console.log('req.body.public value:', req.body.public, 'Type:', typeof req.body.public);
+  
+  // Check if file is public - handle both string 'true' and boolean true
+  const isPublic = req.body.public === 'true' || req.body.public === true;
+  
+  console.log('isPublic determined as:', isPublic);
+
+  // Additional file size validation (1GB = 1024 * 1024 * 1024 bytes)
+  const maxSize = 1024 * 1024 * 1024; // 1GB
+  if (req.file.size > maxSize) {
+    // Delete the uploaded file if it exceeds limit
+    if (fs.existsSync(tempFilePath)) {
+      fs.unlinkSync(tempFilePath);
+    }
+    const fileSizeGB = (req.file.size / (1024 * 1024 * 1024)).toFixed(2);
+    return res.status(400).json({ 
+      error: `File size (${fileSizeGB}GB) exceeds the 1GB limit. Maximum allowed size is 1GB per file.` 
+    });
+  }
+
   // Validate private files must have password
   if (!isPublic) {
     const password = req.body.password ? req.body.password.trim() : '';
     if (!password || password === '') {
       // Delete the uploaded file if password is missing
-      const filePath = path.join(storeDir, req.file.filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
       }
       return res.status(400).json({ error: 'Access code is required for private files' });
     }
     if (password.length < 3) {
       // Delete the uploaded file if password is too short
-      const filePath = path.join(storeDir, req.file.filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+      if (fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
       }
       return res.status(400).json({ error: 'Access code must be at least 3 characters long' });
     }
     // Store password for private files
     filePasswords[req.file.filename] = hashPassword(password);
   }
+
+  // Move file to correct directory based on isPublic flag
+  let finalFilePath = tempFilePath;
+  if (isPublic) {
+    // Move from storeDir to publicDir
+    finalFilePath = path.join(publicDir, req.file.filename);
+    try {
+      // Check if temp file exists before moving
+      if (!fs.existsSync(tempFilePath)) {
+        console.error('Temp file does not exist:', tempFilePath);
+        return res.status(500).json({ error: 'Uploaded file not found' });
+      }
+      
+      // Remove existing file in publicDir if it exists
+      if (fs.existsSync(finalFilePath)) {
+        console.log('Removing existing file in public directory:', finalFilePath);
+        fs.unlinkSync(finalFilePath);
+      }
+      
+      // Move file to public directory
+      console.log(`Moving file from ${tempFilePath} to ${finalFilePath}`);
+      fs.renameSync(tempFilePath, finalFilePath);
+      console.log(`✓ Successfully moved file to public directory: ${req.file.filename}`);
+    } catch (error) {
+      console.error('Error moving file to public directory:', error);
+      console.error('Error details:', error.message, error.stack);
+      // If move fails, delete the temp file
+      if (fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
+      }
+      return res.status(500).json({ error: 'Failed to save public file: ' + error.message });
+    }
+  } else {
+    console.log(`File kept in private directory: ${req.file.filename}`);
+  }
+
+  // Log file info for debugging
+  const fileSizeMB = (req.file.size / (1024 * 1024)).toFixed(2);
+  console.log(`File uploaded: ${req.file.originalname}, Size: ${fileSizeMB}MB, Type: ${req.file.mimetype || 'unknown'}, Public: ${isPublic}, Location: ${isPublic ? 'public' : 'private'}`);
 
   const fileUrl = isPublic 
     ? `/public/${req.file.filename}`
@@ -155,9 +234,12 @@ app.get('/api/files', (req, res) => {
   try {
     const files = [];
     
-    // Get files from store directory
+    // Get files from store directory (excluding public subdirectory)
     const storeFiles = fs.readdirSync(storeDir);
     storeFiles.forEach(file => {
+      // Skip the 'public' directory itself
+      if (file === 'public') return;
+      
       const filePath = path.join(storeDir, file);
       const stats = fs.statSync(filePath);
       if (stats.isFile()) {
@@ -190,10 +272,11 @@ app.get('/api/files', (req, res) => {
     });
 
     // Sort by modified date (newest first)
-    files.sort((a, b) => b.modified - a.modified);
+    files.sort((a, b) => new Date(b.modified) - new Date(a.modified));
 
     res.json({ files });
   } catch (error) {
+    console.error('Error reading files:', error);
     res.status(500).json({ error: 'Failed to read files' });
   }
 });

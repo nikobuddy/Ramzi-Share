@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RamziShare connect - Dashboard</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --primary-light: #60a5fa;
+            --secondary: #64748b;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --surface-hover: #f1f5f9;
+            --border: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --chat-bg: #f1f5f9;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --radius-md: 0.5rem;
+            --radius-lg: 0.75rem;
+            --radius-xl: 1rem;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', 'Roboto', sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .dashboard-container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-md);
+        }
+
+        .sidebar-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .sidebar-header p {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+
+        .user-info {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .user-details {
+            flex: 1;
+        }
+
+        .user-details .name {
+            font-weight: 600;
+            font-size: 0.9375rem;
+        }
+
+        .user-details .status {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .online-users {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .online-users h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .user-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 0.5rem;
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        .user-item:hover {
+            background: var(--surface-hover);
+        }
+
+        .user-item .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .user-item .name {
+            flex: 1;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .logout-btn {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .top-bar {
+            background: var(--surface);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .top-bar h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .content-area {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Chat Section */
+        .chat-section {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            background: var(--chat-bg);
+            border-right: 1px solid var(--border);
+        }
+
+        .chat-header {
+            background: var(--surface);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message {
+            display: flex;
+            gap: 0.75rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.own {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .message-content {
+            max-width: 70%;
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .message-header .name {
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .message-header .time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .message-bubble {
+            background: var(--surface);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            word-wrap: break-word;
+        }
+
+        .message.own .message-bubble {
+            background: var(--primary);
+            color: white;
+        }
+
+        .chat-input-area {
+            background: var(--surface);
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            font-size: 0.9375rem;
+            resize: none;
+            max-height: 120px;
+            font-family: inherit;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .send-btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .send-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .typing-indicator {
+            padding: 0 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-style: italic;
+            min-height: 1.5rem;
+        }
+
+        /* File Section */
+        .file-section {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        .file-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            text-align: center;
+            background: var(--background);
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1.5rem;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: #e0f2fe;
+        }
+
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: #dbeafe;
+        }
+
+        .file-type-selection {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: var(--background);
+            border-radius: var(--radius-md);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .radio-option {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .radio-option:has(input:checked) {
+            border-color: var(--primary);
+            background: #e0f2fe;
+        }
+
+        .radio-option input {
+            margin-right: 0.5rem;
+        }
+
+        .password-input-group {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #fef3c7;
+            border-radius: var(--radius-md);
+            border: 2px solid #fbbf24;
+        }
+
+        .password-input-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-top: 0.5rem;
+        }
+
+        .file-list {
+            margin-top: 1.5rem;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--background);
+            border-radius: var(--radius-md);
+            margin-bottom: 0.75rem;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        .file-icon {
+            font-size: 2rem;
+        }
+
+        .file-details h3 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .file-details p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-public {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-private {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background: var(--surface);
+            margin: 15% auto;
+            padding: 2rem;
+            border-radius: var(--radius-lg);
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        /* Private Chat Modal */
+        #privateChatsContainer {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 1rem;
+            z-index: 2000;
+            max-width: calc(100vw - 40px);
+            align-items: flex-end;
+        }
+
+        .private-chat-modal {
+            width: 350px;
+            max-width: calc(100vw - 40px);
+            height: 500px;
+            max-height: calc(100vh - 40px);
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border);
+            animation: slideUpChat 0.3s ease;
+        }
+
+        @keyframes slideUpChat {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .private-chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem;
+            border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .private-chat-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .private-chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            background: var(--chat-bg);
+        }
+
+        .private-chat-input-area {
+            padding: 1rem;
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+            border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+        }
+
+        .private-chat-input-wrapper {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .private-chat-input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            font-size: 0.875rem;
+        }
+
+        .private-chat-send {
+            padding: 0.5rem 1rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .private-chat-minimized {
+            height: 60px;
+        }
+
+        .private-chat-minimized .private-chat-messages,
+        .private-chat-minimized .private-chat-input-area {
+            display: none;
+        }
+
+        .chat-tabs {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface);
+        }
+
+        .chat-tab {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            border-radius: var(--radius-md);
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .chat-tab.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        @media (max-width: 1024px) {
+            .content-area {
+                flex-direction: column;
+            }
+
+            .chat-section,
+            .file-section {
+                width: 100%;
+                height: 50%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>RamziShare connect</h2>
+                <p>Local Network Server</p>
+            </div>
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-details">
+                    <div class="name" id="userName">User</div>
+                    <div class="status">Online</div>
+                </div>
+            </div>
+            <div class="online-users">
+                <h3>Online Users (<span id="userCount">0</span>)</h3>
+                <div id="usersList"></div>
+            </div>
+            <div class="logout-btn">
+                <button class="btn btn-secondary" style="width: 100%;" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="top-bar">
+                <h1>Dashboard</h1>
+                <div id="connectionStatus" style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--success);"></span>
+                    <span style="font-size: 0.875rem; color: var(--text-secondary);">Connected</span>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <!-- Chat Section -->
+                <div class="chat-section">
+                    <div class="chat-header">
+                        <h2>💬 Chat</h2>
+                    </div>
+                    <div class="chat-tabs">
+                        <button class="chat-tab active" onclick="switchChatTab('public')">🌍 Public Chat</button>
+                        <button class="chat-tab" onclick="switchChatTab('private')">🔒 Private Chat</button>
+                    </div>
+                    <div class="chat-messages" id="chatMessages"></div>
+                    <div class="typing-indicator" id="typingIndicator"></div>
+                    <div class="chat-input-area">
+                        <div class="chat-input-wrapper">
+                            <textarea 
+                                id="chatInput" 
+                                class="chat-input" 
+                                placeholder="Type a message..."
+                                rows="1"
+                            ></textarea>
+                            <button class="send-btn" onclick="sendMessage()">Send</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- File Section -->
+                <div class="file-section">
+                    <div class="file-header">
+                        <h2>📁 File Sharing</h2>
+                        <button class="btn btn-icon" onclick="loadFiles()" title="Refresh">🔄</button>
+                    </div>
+                    <div class="file-content">
+                        <div class="upload-area" id="uploadArea">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📤</div>
+                            <h3>Drag & Drop Files Here</h3>
+                            <p>or click to browse</p>
+                            <input type="file" id="fileInput" style="display: none;" multiple>
+                        </div>
+
+                        <div class="file-type-selection">
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="fileType" id="publicRadio" value="public" checked>
+                                    🌍 Public
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="fileType" id="privateRadio" value="private">
+                                    🔒 Private
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="password-input-group" id="passwordInputGroup" style="display: none;">
+                            <label>🔐 Access Code <span style="color: var(--danger);">*</span></label>
+                            <input type="text" id="filePassword" placeholder="Enter access code" maxlength="50">
+                        </div>
+
+                        <div class="file-list" id="fileList">
+                            <div class="empty-state">
+                                <p>Loading files...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Private Chat Modals Container -->
+    <div id="privateChatsContainer"></div>
+
+    <!-- Password Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h3>🔒 Access Code Required</h3>
+            <p id="modalFileName"></p>
+            <input type="text" id="accessPassword" placeholder="Enter access code" style="width: 100%; padding: 0.75rem; margin: 1rem 0; border: 2px solid var(--border); border-radius: var(--radius-md);">
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-secondary" onclick="closePasswordModal()" style="flex: 1;">Cancel</button>
+                <button class="btn btn-primary" onclick="verifyAndDownload()" style="flex: 1;">Access</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize
+        const userName = sessionStorage.getItem('userName');
+        const userId = sessionStorage.getItem('userId');
+
+        if (!userName || !userId) {
+            window.location.href = '/';
+        }
+
+        // Socket.io connection
+        const socket = io();
+        let currentFileToDownload = null;
+        let currentChatMode = 'public';
+        let privateChats = new Map(); // Map of userId -> chat data
+
+        // DOM elements
+        const userAvatar = document.getElementById('userAvatar');
+        const userNameEl = document.getElementById('userName');
+        const usersList = document.getElementById('usersList');
+        const userCount = document.getElementById('userCount');
+        const chatMessages = document.getElementById('chatMessages');
+        const chatInput = document.getElementById('chatInput');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const publicRadio = document.getElementById('publicRadio');
+        const privateRadio = document.getElementById('privateRadio');
+        const passwordInputGroup = document.getElementById('passwordInputGroup');
+        const filePassword = document.getElementById('filePassword');
+        const fileList = document.getElementById('fileList');
+
+        // Set user info
+        userAvatar.textContent = userName.charAt(0).toUpperCase();
+        userNameEl.textContent = userName;
+
+        // Socket events
+        socket.on('connect', () => {
+            socket.emit('user-join', { name: userName, userId: userId });
+        });
+
+        socket.on('users-list', (users) => {
+            updateUsersList(users);
+        });
+
+        socket.on('user-joined', (data) => {
+            addSystemMessage(`${data.user.name} joined the server`);
+            // Request updated users list
+            socket.emit('request-users-list');
+        });
+
+        socket.on('user-left', (data) => {
+            addSystemMessage(`${data.user.name} left the server`);
+            // Close private chat if user left
+            if (privateChats.has(data.user.userId)) {
+                closePrivateChat(data.user.userId);
+                privateChats.delete(data.user.userId);
+            }
+            // Request updated users list
+            socket.emit('request-users-list');
+        });
+
+        socket.on('chat-message', (data) => {
+            addChatMessage(data);
+        });
+
+        socket.on('file-shared', (data) => {
+            addSystemMessage(`${data.user} shared a file: ${data.fileName}`);
+            loadFiles();
+        });
+
+        socket.on('typing', (data) => {
+            if (currentChatMode === 'public' && data.isTyping) {
+                typingIndicator.textContent = `${data.user} is typing...`;
+            } else {
+                typingIndicator.textContent = '';
+            }
+        });
+
+        socket.on('private-message', (data) => {
+            handlePrivateMessage(data);
+        });
+
+        socket.on('request-users-list', () => {
+            socket.emit('get-users-list');
+        });
+
+        socket.on('users-list-updated', (users) => {
+            updateUsersList(users);
+        });
+
+        // Chat functions
+        function sendMessage() {
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            if (currentChatMode === 'public') {
+                socket.emit('chat-message', { message });
+            } else {
+                // Private chat - send to selected user
+                const activePrivateChat = Array.from(privateChats.values()).find(chat => chat.active);
+                if (activePrivateChat) {
+                    socket.emit('private-message', {
+                        toUserId: activePrivateChat.userId,
+                        message: message
+                    });
+                    addPrivateChatMessage(activePrivateChat.userId, {
+                        user: userName,
+                        userId: userId,
+                        message: message,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            }
+
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            socket.emit('typing', { isTyping: false });
+        }
+
+        function switchChatTab(mode) {
+            currentChatMode = mode;
+            document.querySelectorAll('.chat-tab').forEach((tab, index) => {
+                tab.classList.remove('active');
+                if ((mode === 'public' && index === 0) || (mode === 'private' && index === 1)) {
+                    tab.classList.add('active');
+                }
+            });
+            
+            if (mode === 'public') {
+                chatMessages.style.display = 'flex';
+            } else {
+                chatMessages.style.display = 'none';
+            }
+        }
+
+        function startPrivateChat(targetUserId, targetUserName) {
+            if (!privateChats.has(targetUserId)) {
+                privateChats.set(targetUserId, {
+                    userId: targetUserId,
+                    userName: targetUserName,
+                    messages: [],
+                    active: true,
+                    minimized: false
+                });
+                createPrivateChatWindow(targetUserId, targetUserName);
+            } else {
+                // Activate existing chat
+                const chat = privateChats.get(targetUserId);
+                chat.active = true;
+                chat.minimized = false;
+                updatePrivateChatWindows();
+            }
+        }
+
+        function createPrivateChatWindow(userId, userName) {
+            const container = document.getElementById('privateChatsContainer');
+            const chatWindow = document.createElement('div');
+            chatWindow.className = 'private-chat-modal';
+            chatWindow.id = `privateChat-${userId}`;
+            
+            chatWindow.innerHTML = `
+                <div class="private-chat-header">
+                    <h3>💬 ${userName}</h3>
+                    <div>
+                        <button onclick="toggleMinimizePrivateChat('${userId}')" style="background: transparent; border: none; color: white; cursor: pointer; padding: 0.25rem 0.5rem;">−</button>
+                        <button onclick="closePrivateChat('${userId}')" style="background: transparent; border: none; color: white; cursor: pointer; padding: 0.25rem 0.5rem;">×</button>
+                    </div>
+                </div>
+                <div class="private-chat-messages" id="privateMessages-${userId}"></div>
+                <div class="private-chat-input-area">
+                    <div class="private-chat-input-wrapper">
+                        <input type="text" class="private-chat-input" id="privateInput-${userId}" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendPrivateMessage('${userId}')">
+                        <button class="private-chat-send" onclick="sendPrivateMessage('${userId}')">Send</button>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(chatWindow);
+            updatePrivateChatWindows();
+        }
+
+        function sendPrivateMessage(userId) {
+            const input = document.getElementById(`privateInput-${userId}`);
+            const message = input.value.trim();
+            if (!message) return;
+
+            socket.emit('private-message', {
+                toUserId: userId,
+                message: message
+            });
+
+            addPrivateChatMessage(userId, {
+                user: userName,
+                userId: userId,
+                message: message,
+                timestamp: new Date().toISOString()
+            });
+
+            input.value = '';
+        }
+
+        function addPrivateChatMessage(targetUserId, data) {
+            const chat = privateChats.get(targetUserId);
+            if (!chat) return;
+
+            chat.messages.push(data);
+            const messagesDiv = document.getElementById(`privateMessages-${targetUserId}`);
+            if (!messagesDiv) return;
+            
+            const isOwn = data.userId === userId; // Check if message is from current user
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${isOwn ? 'own' : ''}`;
+            messageEl.style.marginBottom = '0.75rem';
+            
+            const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            messageEl.innerHTML = `
+                <div class="message-avatar">${data.user.charAt(0).toUpperCase()}</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="name">${data.user}</span>
+                        <span class="time">${time}</span>
+                    </div>
+                    <div class="message-bubble">${escapeHtml(data.message)}</div>
+                </div>
+            `;
+            
+            messagesDiv.appendChild(messageEl);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function handlePrivateMessage(data) {
+            if (!privateChats.has(data.fromUserId)) {
+                startPrivateChat(data.fromUserId, data.fromUserName);
+            }
+            addPrivateChatMessage(data.fromUserId, {
+                user: data.fromUserName,
+                userId: data.fromUserId,
+                message: data.message,
+                timestamp: data.timestamp
+            });
+        }
+
+        function toggleMinimizePrivateChat(userId) {
+            const chat = privateChats.get(userId);
+            if (chat) {
+                chat.minimized = !chat.minimized;
+                updatePrivateChatWindows();
+            }
+        }
+
+        function closePrivateChat(userId) {
+            const chat = privateChats.get(userId);
+            if (chat) {
+                chat.active = false;
+            }
+            const chatWindow = document.getElementById(`privateChat-${userId}`);
+            if (chatWindow) {
+                chatWindow.remove();
+            }
+        }
+
+        function updatePrivateChatWindows() {
+            privateChats.forEach((chat, userId) => {
+                const chatWindow = document.getElementById(`privateChat-${userId}`);
+                if (chatWindow) {
+                    if (chat.minimized) {
+                        chatWindow.classList.add('private-chat-minimized');
+                    } else {
+                        chatWindow.classList.remove('private-chat-minimized');
+                    }
+                }
+            });
+        }
+
+        function addChatMessage(data) {
+            const isOwn = data.userId === userId;
+            const messageEl = document.createElement('div');
+            messageEl.className = `message ${isOwn ? 'own' : ''}`;
+            
+            const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            messageEl.innerHTML = `
+                <div class="message-avatar">${data.user.charAt(0).toUpperCase()}</div>
+                <div class="message-content">
+                    <div class="message-header">
+                        <span class="name">${data.user}</span>
+                        <span class="time">${time}</span>
+                    </div>
+                    <div class="message-bubble">${escapeHtml(data.message)}</div>
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addSystemMessage(message) {
+            const messageEl = document.createElement('div');
+            messageEl.style.textAlign = 'center';
+            messageEl.style.padding = '0.5rem';
+            messageEl.style.color = 'var(--text-muted)';
+            messageEl.style.fontSize = '0.875rem';
+            messageEl.style.fontStyle = 'italic';
+            messageEl.textContent = message;
+            chatMessages.appendChild(messageEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function updateUsersList(users) {
+            // Filter out current user from the list
+            const otherUsers = users.filter(user => user.userId !== userId);
+            
+            if (otherUsers.length === 0) {
+                usersList.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-muted); font-size: 0.875rem;">No other users online</div>';
+            } else {
+                usersList.innerHTML = otherUsers.map(user => `
+                    <div class="user-item" onclick="startPrivateChat('${user.userId}', '${escapeHtml(user.name)}')">
+                        <div class="avatar">${user.name.charAt(0).toUpperCase()}</div>
+                        <div class="name" style="flex: 1;">${escapeHtml(user.name)}</div>
+                        <div class="status-indicator"></div>
+                        <button class="btn btn-primary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; margin-left: 0.5rem;" onclick="event.stopPropagation(); startPrivateChat('${user.userId}', '${escapeHtml(user.name)}')">💬</button>
+                    </div>
+                `).join('');
+            }
+            userCount.textContent = users.length;
+        }
+
+        // File functions
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                uploadFiles(e.dataTransfer.files);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                uploadFiles(e.target.files);
+            }
+        });
+
+        publicRadio.addEventListener('change', () => {
+            passwordInputGroup.style.display = publicRadio.checked ? 'none' : 'block';
+        });
+        privateRadio.addEventListener('change', () => {
+            passwordInputGroup.style.display = privateRadio.checked ? 'block' : 'none';
+        });
+
+        async function uploadFiles(files) {
+            for (let file of files) {
+                await uploadFile(file);
+            }
+        }
+
+        async function uploadFile(file) {
+            const isPublic = publicRadio.checked;
+            if (!isPublic && !filePassword.value.trim()) {
+                alert('Access code is required for private files');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('public', isPublic ? 'true' : 'false');
+            if (!isPublic) {
+                formData.append('password', filePassword.value.trim());
+            }
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    socket.emit('file-shared', {
+                        fileName: data.filename,
+                        fileSize: data.size,
+                        isPublic: data.isPublic
+                    });
+                    filePassword.value = '';
+                    loadFiles();
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+            }
+        }
+
+        async function loadFiles() {
+            try {
+                const response = await fetch('/api/files');
+                const data = await response.json();
+                displayFiles(data.files);
+            } catch (error) {
+                console.error('Error loading files:', error);
+            }
+        }
+
+        function displayFiles(files) {
+            if (files.length === 0) {
+                fileList.innerHTML = '<div class="empty-state"><p>No files uploaded yet</p></div>';
+                return;
+            }
+
+            fileList.innerHTML = files.map(file => `
+                <div class="file-item">
+                    <div class="file-info">
+                        <div class="file-icon">📄</div>
+                        <div class="file-details">
+                            <h3>${escapeHtml(file.name)}</h3>
+                            <p>${formatFileSize(file.size)} • ${formatDate(file.modified)}</p>
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        <span class="badge ${file.isPublic ? 'badge-public' : 'badge-private'}">
+                            ${file.isPublic ? '🌍 Public' : '🔒 Private'}
+                        </span>
+                        <button class="btn btn-primary" onclick="downloadFile('${escapeHtml(file.name)}', ${file.isPublic}, ${!file.isPublic})">Download</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function downloadFile(filename, isPublic, hasPassword) {
+            if (isPublic) {
+                window.open(`/public/${encodeURIComponent(filename)}`, '_blank');
+            } else if (hasPassword) {
+                currentFileToDownload = { filename, isPublic };
+                document.getElementById('modalFileName').textContent = filename;
+                document.getElementById('passwordModal').style.display = 'block';
+            } else {
+                window.open(`/store/${encodeURIComponent(filename)}`, '_blank');
+            }
+        }
+
+        function verifyAndDownload() {
+            const password = document.getElementById('accessPassword').value.trim();
+            if (!password) return;
+
+            fetch('/api/verify-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filename: currentFileToDownload.filename,
+                    password: password
+                })
+            }).then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    window.open(`/store/${encodeURIComponent(currentFileToDownload.filename)}?password=${encodeURIComponent(password)}`, '_blank');
+                    closePasswordModal();
+                } else {
+                    alert('Invalid access code');
+                }
+            });
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+            document.getElementById('accessPassword').value = '';
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = '/';
+        }
+
+        // Chat input auto-resize
+        chatInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Utility functions
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleString();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        loadFiles();
+    </script>
+</body>
+</html>
+

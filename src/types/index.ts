@@ -59,4 +59,3 @@ export interface PrivateChatWindowProps {
   onMinimize: () => void;
   onSendMessage: (message: string) => void;
 }
-
